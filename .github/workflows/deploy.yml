@@ -47,7 +47,7 @@ jobs:
           script: |
             rm -rf ~/github-actions/current
             mkdir ~/github-actions/current
-            mv ~/github-actions/tobe/project.jar > ~/github-actions/current/project.jar
+            mv ~/github-actions/tobe/project.jar ~/github-actions/current/project.jar
             cd ~/github-actions/current
             sudo fuser -k -n tcp 8080 || true
             nohup java -jar project.jar > ./output.log 2>&1 &
