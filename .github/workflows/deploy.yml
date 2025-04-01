@@ -1,4 +1,4 @@
-name: Deploy To Ec2
+name: Deploy To EC2
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - main
 
 jobs:
-  Deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Github Repo에 올린 파일 불러옴
+      - name: Github Repository 파일 불러오기
         uses: actions/checkout@v4
 
       - name: JDK 17버전 설치
@@ -18,26 +18,33 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: application.yml 파일 생성
+      - name: application.yml 파일 만들기
         run: echo "${{ secrets.APPLICATION_PROPERTIES }}" > ./src/main/resources/application.yml
 
-      - name: 테스트 및 빌드
+      - name: 테스트 및 빌드하기
         run: ./gradlew clean build
 
-      - name: 빌드파일 이름 변경
-        run: mv ./build/libs/*SNAPSHOT.jar ./project.jar
-
-      - name: SCP로 EC2로 빌드 파일 전송
-        uses: appleboy/scp-action@v0.1.7
+      - name: AWS Resource에 접근할 수 있게 AWS credentials 설정
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          source: project.jar
-          target: ~/github-actions/tobe
+          aws-region: ap-northeast-2
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      - name: ECR에 로그인하기
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: SSH로 EC2 접속
+      - name: Docker 이미지 생성
+        run: docker build -t github-actions .
+
+      - name: Docker 이미지에 Tag 붙이기
+        run: docker tag github-actions ${{ steps.login-ecr.outputs.registry }}/github-actions:latest
+
+      - name: ECR에 Docker 이미지 Push하기
+        run: docker push ${{ steps.login-ecr.outputs.registry }}/github-actions:latest
+
+      - name: SSH로 EC2에 접속
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -45,11 +52,21 @@ jobs:
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script_stop: true
           script: |
-            rm -rf ~/github-actions/current
-            mkdir ~/github-actions/current
-            mv ~/github-actions/tobe/project.jar ~/github-actions/current/project.jar
-            cd ~/github-actions/current
-            sudo fuser -k -n tcp 8080 || true
-            nohup java -jar project.jar > ./output.log 2>&1 &
-            rm -rf ~/github-actions/tobe
+            docker stop github-actions || true
+            docker rm github-actions || true
+            docker pull ${{ steps.login-ecr.output.registry }}/github-actions:latest
+            docker run -d --name github-actions -p 8080:8080 ${{ steps.login-ecr.outputs.registry }}/github-actions:latest
+            
 
+      - name: 압축하기
+        run: tar -czvf $GITHUB_SHA.tar.gz appspec.yml scripts
+
+      - name: S3에 프로젝트 폴더 업로드하기
+        run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.tar.gz s3://instagram-server/$GITHUB_SHA.tar.gz
+
+      - name: Code Deploy를 활용해 EC2에 프로젝트 코드 배포
+        run: aws deploy create-deployment
+          --application-name instagram-server
+          --deployment-config-name CodeDeployDefault.AllAtOnce
+          --deployment-group-name Production
+          --s3-location bucket=instagram-server,bundleType=tgz,key=$GITHUB_SHA.tar.gz
