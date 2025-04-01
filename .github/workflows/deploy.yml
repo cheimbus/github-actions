@@ -35,9 +35,10 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: ECR 로그인 확인
-        run:
-          echo "${{ steps.login-ecr.outputs.registry }}"
+      - name: 직접 ECR 로그인 시도
+        run: |
+          aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 390402538983.dkr.ecr.ap-northeast-2.amazonaws.com
+    
 
       - name: Docker 이미지 생성
         run: docker build -t github-actions .
