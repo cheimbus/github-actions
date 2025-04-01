@@ -35,6 +35,10 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: ECR 로그인 확인
+        run:
+          echo "${{ steps.login-ecr.outputs.registry }}"
+
       - name: Docker 이미지 생성
         run: docker build -t github-actions .
 
