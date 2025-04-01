@@ -55,4 +55,4 @@ jobs:
           --application-name github-actions-server
           --deployment-config-name CodeDeployDefault.AllAtOnce
           --deployment-group-name Production
-          --s3-location bucket=siu-github-actions,bundleType=tgz,key=$GITHUB_SHA.tar.gz
+          --s3-location bucket=siu-github-actions-server,bundleType=tgz,key=$GITHUB_SHA.tar.gz
