@@ -54,7 +54,7 @@ jobs:
           script: |
             docker stop github-actions || true
             docker rm github-actions || true
-            docker pull ${{ steps.login-ecr.output.registry }}/github-actions:latest
+            docker pull ${{ steps.login-ecr.outputs.registry }}/github-actions:latest
             docker run -d --name github-actions -p 8080:8080 ${{ steps.login-ecr.outputs.registry }}/github-actions:latest
             
 
