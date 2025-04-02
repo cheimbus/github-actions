@@ -24,7 +24,7 @@ jobs:
       - name: 테스트 및 빌드하기
         run: ./gradlew clean build
 
-      - name: AWS Resource에 접근할 수 있게 AWS credentials 설정
+      - name: AWS 리소스에 접근할 수 있도록 AWS credentials 설정
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ap-northeast-2
@@ -50,7 +50,7 @@ jobs:
       - name: S3에 프로젝트 폴더 업로드하기
         run: aws s3 cp --region ap-northeast-2 ./$GITHUB_SHA.tar.gz s3://siu-github-actions-server/$GITHUB_SHA.tar.gz
 
-      - name: Code Deploy를 활용해 EC2에 프로젝트 코드 배포
+      - name: CodeDeploy를 활용해 EC2에 프로젝트 코드 배포
         run: aws deploy create-deployment
           --application-name github-actions-server
           --deployment-config-name CodeDeployDefault.AllAtOnce
